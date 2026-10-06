@@ -6,12 +6,15 @@ import pandas as pd
 import sys
 sys.path.append(os.path.abspath("src"))
 
+# Windows consoles default to cp1252, which can't encode the emoji in log output
+sys.stdout.reconfigure(encoding="utf-8")
+
 from data.load_data import load_data
 from data.preprocess import preprocess_data
 from features.build_features import build_features
 
 # === CONFIG ===
-DATA_PATH = "/Users/riadanas/Desktop/Telco Customer Churn MLE/data/raw/Telco-Customer-Churn.csv"  # adjust to your file path
+DATA_PATH = "data/raw/Telco-Customer-Churn.csv"  # relative to the project root
 TARGET_COL = "Churn"
 
 def main():
@@ -35,7 +38,7 @@ def main():
     print(f"Data after feature engineering. Shape: {df_features.shape}")
     print(df_features.head(3))
 
-    print("\n✅ Phase 1 pipeline completed successfully!")
+    print("\n Phase 1 pipeline completed successfully!")
 
 if __name__ == "__main__":
     main()

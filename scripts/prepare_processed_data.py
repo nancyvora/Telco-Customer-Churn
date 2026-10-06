@@ -4,6 +4,9 @@ import pandas as pd
 # make src importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# Windows consoles default to cp1252, which can't encode the emoji in log output
+sys.stdout.reconfigure(encoding="utf-8")
+
 from src.data.preprocess import preprocess_data
 from src.features.build_features import build_features
 
@@ -30,4 +33,4 @@ df_processed = build_features(df, target_col="Churn")
 # 5) save
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 df_processed.to_csv(OUT, index=False)
-print(f"✅ Processed dataset saved to {OUT} | Shape: {df_processed.shape}")
+print(f"Processed dataset saved to {OUT} | Shape: {df_processed.shape}")

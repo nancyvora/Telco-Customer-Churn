@@ -71,7 +71,7 @@ Critical pattern: Training and serving must use identical feature transformation
 
 **Serving** (`src/serving/inference.py`):
 - Uses fixed `BINARY_MAP` dictionary for consistent binary encoding
-- Applies `pd.get_dummies()` with same parameters as training
+- Applies `pd.get_dummies()` without `drop_first` (a single row has one category per column); the baseline categories dropped in training are removed by the `FEATURE_COLS` reindex
 - Feature alignment via `FEATURE_COLS` from training artifacts
 
 ### Model Loading and Serving
@@ -93,7 +93,7 @@ Critical pattern: Training and serving must use identical feature transformation
 
 ### CI/CD Pipeline
 - **Trigger**: Push to main branch
-- **Actions**: Build Docker image → Push to Docker Hub (`anasriad8/telco-fastapi:latest`)
+- **Actions**: Build Docker image → Push to Docker Hub (`ncyvora/telco-fastapi:latest`)
 - **Requirements**: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets
 - **Deployment**: Manual ECS service update (AWS Fargate + ALB)
 

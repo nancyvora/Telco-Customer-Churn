@@ -43,9 +43,20 @@ except Exception as e:
     print(f"❌ Failed to load model from {MODEL_DIR}: {e}")
     # Fallback for local development (OPTIONAL)
     try:
-        # Try loading from local MLflow tracking
+        # Try loading from local MLflow tracking, then the model bundled for Docker
         import glob
-        local_model_paths = glob.glob("./mlruns/*/*/artifacts/model")
+        # Resolve from this file, so it works whatever directory the app is started from
+        serving_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(serving_dir, "..", ".."))
+        local_model_paths = (
+            glob.glob(os.path.join(project_root, "mlruns", "*", "*", "artifacts", "model"))
+            + glob.glob(os.path.join(serving_dir, "model", "*", "artifacts", "model"))
+        )
+        # Only pipeline runs are servable: they log feature_columns.txt next to the model
+        local_model_paths = [
+            p for p in local_model_paths
+            if os.path.exists(os.path.join(os.path.dirname(p), "feature_columns.txt"))
+        ]
         if local_model_paths:
             latest_model = max(local_model_paths, key=os.path.getmtime)
             model = mlflow.pyfunc.load_model(latest_model)
@@ -61,6 +72,9 @@ except Exception as e:
 # This ensures the model receives features in the expected order
 try:
     feature_file = os.path.join(MODEL_DIR, "feature_columns.txt")
+    if not os.path.exists(feature_file):
+        # MLflow runs keep it beside the model folder, not inside it
+        feature_file = os.path.join(os.path.dirname(MODEL_DIR), "feature_columns.txt")
     with open(feature_file) as f:
         FEATURE_COLS = [ln.strip() for ln in f if ln.strip()]
     print(f"✅ Loaded {len(FEATURE_COLS)} feature columns from training")
@@ -139,9 +153,10 @@ def _serve_transform(df: pd.DataFrame) -> pd.DataFrame:
     # Find remaining object/categorical columns (not in BINARY_MAP)
     obj_cols = [c for c in df.select_dtypes(include=["object"]).columns]
     if obj_cols:
-        # Apply one-hot encoding with drop_first=True (same as training)
-        # This prevents multicollinearity by dropping the first category
-        df = pd.get_dummies(df, columns=obj_cols, drop_first=True)
+        # One-hot encode WITHOUT drop_first: a single row has one category per column,
+        # so drop_first would drop it and zero out every one-hot feature.
+        # The baseline categories training dropped are removed by the reindex in STEP 5.
+        df = pd.get_dummies(df, columns=obj_cols)
     
     # === STEP 4: Boolean to Integer Conversion ===
     # Convert any boolean columns to integers (XGBoost compatibility)
